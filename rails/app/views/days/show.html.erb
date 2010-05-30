@@ -1,0 +1,20 @@
+<h1>Balsojumi <%= @day.date %></h1>
+
+
+<table>
+  <tr>
+    <th>Laiks</th>
+    <th>Balsojuma motīvs</th>
+    <th></th>
+  </tr>
+
+<% @polls.each do |poll| %>
+  <tr>
+    <td><%= poll.date.strftime("%H:%M:%S") %></td>
+    <td><%= link_to(poll.motif, poll) %></td>
+  </tr>
+<% end %>
+</table>
+</p>
+
+

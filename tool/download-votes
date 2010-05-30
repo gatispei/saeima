@@ -1,0 +1,103 @@
+#!/opt/local/bin/ruby1.9
+
+require 'httparty'
+require 'fileutils'
+
+all_links = []
+
+Dir.new("stenograms").each { |l|
+    next if File.directory?("stenograms/#{l}")
+#    puts l
+    x = File.open("stenograms/#{l}").read.force_encoding("Windows-1257")
+#    puts x.size
+
+    links = x.scan(/href[^=]*=[^\"]*\"[^"]*\"[^\>]*\>[^\<]*\</)
+
+    all_links.concat(links)
+
+}
+
+puts "all links #{all_links.size}"
+#puts all_links.join("\n")
+
+balsoj_links = all_links.select { |l|
+    l["/Balsoj/"] && !l["titania"]
+}
+titania_links = all_links.select { |l|
+    l["titania"] && l[".nsf/0/"]
+}
+
+
+
+#all_links = all_links - balsoj_links
+#all_links = all_links - titania_links
+#puts all_links.size
+#puts all_links.join("\n")
+
+balsoj_links.map! { |l|
+    l[/\"([^\"]*)\"/, 1]
+}
+balsoj_links.uniq!
+puts balsoj_links.size
+
+
+titania_links.map! { |l|
+    l[/\"([^\"]*)\"/, 1]
+}
+titania_links.uniq!
+titania_links = titania_links.select { |l| l[/OpenDocument$/] }
+
+puts titania_links.size
+
+
+#puts balsoj_links.join("\n")
+#puts titania_links.join("\n")
+
+
+FileUtils.mkdir("votes") if !File.directory?("votes")
+
+
+balsoj_links.each { |l|
+    fn = l.dup
+    fn["/steno/Saeima9/"] = ""
+    fn["/Balsoj"] = ""
+    fn.gsub!("?", "-")
+    fn.gsub!("/", "-")
+
+#    puts fn
+
+    l = "http://saeima.lv#{l}"
+    puts l
+    resp = HTTParty.get(l)
+    puts "got #{fn}, size #{resp.body.size}"
+
+    x = File.open("votes/#{fn}", "w")
+    x.write(resp.body)
+    x.close
+}
+
+titania_links.each { |l|
+    fn = l.dup
+    if fn["http://titania.saeima.lv/LIVS/SaeimaLIVS2_DK.nsf/0/"]
+        fn["http://titania.saeima.lv/LIVS/SaeimaLIVS2_DK.nsf/0/"] = ""
+    end
+
+    fn.gsub!(":", "-")
+    fn.gsub!("?", "-")
+    fn.gsub!("/", "-")
+
+    fn += ".htm"
+
+#    puts fn
+
+    l = "http:" + l if !l["http:"]
+    puts l
+    resp = HTTParty.get(l)
+    puts "got #{fn}, size #{resp.body.size}"
+
+    x = File.open("votes/#{fn}", "w")
+    x.write(resp.body)
+    x.close
+}
+
+

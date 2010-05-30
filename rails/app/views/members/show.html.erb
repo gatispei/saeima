@@ -1,0 +1,25 @@
+
+<h1><%= "#{@member.surname} #{@member.name}" %></h1>
+
+
+<h3>Balsojumi</h3>
+
+<table>
+  <tr>
+    <th>Laiks</th>
+    <th>Balsojuma motīvs</th>
+    <th>Balss</th>
+    <th></th>
+  </tr>
+
+<% @polls.each_index do |i| %>
+  <tr>
+    <td><%= @polls[i].date %></td>
+    <td><%= link_to(@polls[i].motif, @polls[i]) %></td>
+    <td><%= format_vote(@votes[i].vote) %></td>
+  </tr>
+<% end %>
+</table>
+</p>
+<%= will_paginate @polls %>
+

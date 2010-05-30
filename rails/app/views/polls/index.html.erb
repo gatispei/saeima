@@ -1,0 +1,21 @@
+<h1>Balsojumi</h1>
+
+
+<table>
+  <tr>
+    <th>Laiks</th>
+    <th>Balsojuma motīvs</th>
+    <th></th>
+  </tr>
+
+<% @polls.each do |poll| %>
+  <tr>
+    <td><%= poll.date %></td>
+    <td><%= link_to(poll.motif, poll) %></td>
+  </tr>
+<% end %>
+</table>
+</p>
+<%= will_paginate @polls %>
+
+

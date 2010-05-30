@@ -1,0 +1,44 @@
+
+<h1><%= @poll.motif %></h1>
+<h3><%= @poll.date %></h3>
+<h3><%= link_to("Avots", @poll.url) %></h3>
+
+<br></br>
+
+<h1>
+Par: <%= @votes.select { |v| v.vote == 1 }.size %>
+Pret: <%= @votes.select { |v| v.vote == 2 }.size %>
+Atturas: <%= @votes.select { |v| v.vote == 3 }.size %>
+Nebalso: <%= @votes.select { |v| v.vote == 0 }.size %>
+</h1>
+
+
+<table>
+<% (0..(@partys.size / 5)).each do |i| from = i * 5; to = [from + 4, @partys.size - 1].min %>
+
+  <tr>
+    <% (from..to).each do |i| %>
+    <th><h3><%= @partys[i] %></h3></th>
+    <th></th>
+    <% end %>
+  </tr>
+  <% [1, 2, 3, 0].each do |v| %>
+  <tr>
+    <% (from..to).each do |p| %>
+    <th><%= format_vote(v) %>: <%= @grouped_votes[p].select { |x| x[1].vote == v }.size %></th>
+    <th></th>
+    <% end %>
+  </tr>
+  <% end %>
+
+  <% (0..@max).each do |i| %>
+  <tr>
+    <% (from..to).each do |p| %>
+    <td style="white-space:nowrap;"><%= if @grouped_votes[p][i] then "#{@grouped_votes[p][i][0].surname} #{@grouped_votes[p][i][0].name}"; end %></td>
+    <td><%= if @grouped_votes[p][i] then format_vote(@grouped_votes[p][i][1].vote); end %></td>
+    <% end %>
+  </tr>
+  <% end %>
+
+<% end %>
+</table>

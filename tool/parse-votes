@@ -1,0 +1,202 @@
+#!/opt/local/bin/ruby1.9
+# -*- coding: utf-8 -*-
+
+#require 'sqlite3'
+require 'fileutils'
+require 'active_record'
+require 'json'
+require 'cgi'
+require 'rexml/text'
+
+NEBALSO = 0
+PAR = 1
+PRET = 2
+ATTURAS = 3
+
+
+
+DB = "2.db"
+ActiveRecord::Base.establish_connection(:adapter => "sqlite3",
+                                        :database => DB)
+
+class Poll < ActiveRecord::Base
+end
+
+class Member < ActiveRecord::Base
+end
+
+class Vote < ActiveRecord::Base
+end
+
+def add_member(surname, name, party)
+
+    m = Member.find(:first, :conditions => {
+                        :surname => surname, :name => name, :party => party } )
+    if m
+#        puts "member found"
+        return m.id
+    end
+
+    m = Member.new
+    m.surname = surname
+    m.name = name
+    m.party = party
+    m.save
+
+    return m.id
+end
+
+def parse_vote(vote)
+    return NEBALSO if vote == "Nebalso"
+    return NEBALSO if vote == "Nebalsoja"
+    return PAR if vote == "Par"
+    return PRET if vote == "Pret"
+    return ATTURAS if vote == "Atturas"
+    puts "unknown vote #{vote}"
+    exit 1
+end
+
+def parse_date_type1(date)
+    d = /(..)\.(..)\.(....)\.(..):(..):(..)/.match(date)
+    return Time.local(d[3], d[2], d[1], d[4], d[5], d[6]) if d
+    d = /(....)\.(..)\.(..)\.(..):(..):(..)/.match(date)
+    return Time.local(d[1], d[2], d[3], d[4], d[5], d[6]) if d
+end
+
+def parse_poll_type1(name, text)
+
+    datums = text[/\<!--2--\>Datums:(.*)bal/, 1]
+
+    if !datums
+#        puts "no datums in #{name} #{text.size}"
+        return
+    end
+    datums.gsub!(" ", "")
+    datums = parse_date_type1(datums)
+
+    motivs = text[/\<!--3--\>.*\:(.*)/, 1]
+    motivs.strip!
+    registered = text[/istr. - (\d+)\</, 1].to_i
+    nebalso = text[/Nebalso - (\d+)\</, 1].to_i
+    par = text[/Par - (\d+)\</, 1].to_i
+    pret = text[/Pret - (\d+)\</, 1].to_i
+    atturas = text[/Atturas - (\d+)\</, 1].to_i
+
+    poll = Poll.find(:first, :conditions => { :date => datums } )
+    if !poll
+        poll = Poll.new
+        poll.date = datums
+        poll.url = "http://saeima.lv/steno/Saeima9/#{name[/(.*)-/, 1]}/Balsoj/#{name[/-(.*)/, 1]}"
+        poll.motif = motivs
+        poll.registered = registered
+        poll.nebalso = nebalso
+        poll.par = par
+        poll.pret = pret
+        poll.atturas = atturas
+        poll.save
+    end
+
+    puts "#{poll.id} #{datums} reg #{registered}, nebalso #{nebalso}, par #{par}, pret #{pret}, atturas #{atturas}"
+
+    arr = text.scan(/FONT SIZE=1(\>.*\<)\/TD/)
+    arr.map! { |l| l[0] }
+    arr.map! { |l| l[/\>([^\<]+)\</, 1] }
+    arr.map! { |l| l = "" if !l; l }
+    arr = arr.select { |l| !l["*"] }
+#    puts arr.size
+
+    while arr.size > 0
+        x = arr.first(4)
+        arr = arr.drop(4)
+#        puts x.join(", ")
+        mid = add_member(x[0], x[1], x[2])
+
+        v = Vote.new
+        v.poll_id = poll.id
+        v.member_id = mid
+        v.vote = parse_vote(x[3])
+        v.save
+    end
+
+end
+
+
+def parse_date_type2(date)
+    d = /(..)\/(..)\/(....) (..):(..):(..) (.)/.match(date)
+    h = d[4].to_i
+    h += 12 if d[7] == "P" && h < 12
+    Time.local(d[3], d[1], d[2], h, d[5], d[6])
+end
+
+def parse_poll_type2(name, text)
+#    puts name
+    datums = text[/Datums:.*\<b\>(.*)\<\/b/, 1]
+    datums = parse_date_type2(datums)
+    motivs = REXML::Text.unnormalize(text[/Balso.*anas mot.*vs:.*\<b\>(.*)\<\/b/, 1])
+
+    data = text[/voteFullListByNames=(\[[^\]]*\])/, 1]
+    return if data == "[\"\"]"
+
+    poll = Poll.find(:first, :conditions => { :date => datums } )
+    if !poll
+        poll = Poll.new
+        poll.date = datums
+        poll.url = "http://titania.saeima.lv/LIVS/SaeimaLIVS2_DK.nsf/0/#{name[/(.*)\.htm/, 1].gsub!("-", "?")}"
+        poll.motif = motivs
+        poll.save
+    end
+
+    puts "#{poll.id} #{datums}"
+
+    data = JSON.parse(data)
+    data.each { |l|
+        a = l.split("¤")
+        surname, name = CGI.unescape(a[1]).split
+#        puts "sur: #{surname}, name: #{name}, party: #{a[2]}, vote: #{a[3]}"
+
+        mid = add_member(surname, name, a[2])
+
+        v = Vote.new
+        v.poll_id = poll.id
+        v.member_id = mid
+        v.vote = parse_vote(a[3])
+        v.save
+    }
+end
+
+def parse
+    count = 0
+    Dir.new("votes").each { |l|
+        next if File.directory?("votes/#{l}")
+        next if l.size < 20
+        count += 1
+#        next if count <= 4444
+#        puts l
+#        x = File.open("votes/#{l}").read.encode("UTF-8", "Windows-1257")
+#        parse_poll_type1(l, x)
+
+
+        x = File.open("votes/#{l}").read.encode("UTF-8", "ISO-8859-1")
+        parse_poll_type2(l, x)
+    }
+end
+
+def init_db
+
+    FileUtils.rm_rf(DB)
+    system("cat schema.sql | sqlite3 #{DB}")
+
+end
+
+
+#init_db
+
+
+#x = File.open("votes/061123-008.htm").read.encode("UTF-8", "Windows-1257")
+#x = File.open("votes/071025-002.htm").read.encode("UTF-8", "Windows-1257")
+#x = File.open("votes/090115-024.htm").read.encode("UTF-8", "Windows-1257")
+#parse_poll_type1("lala", x)
+
+parse
+
+

@@ -1,0 +1,21 @@
+<h1>Sēdes</h1>
+
+<h3>Sēžu datumi</h3>
+
+<br>
+<% y = nil; m = nil; %>
+<% @days.each do |day| %>
+
+<% if y != day.date.year
+   y = day.date.year %>
+</br><br></br><br><%= y %>
+<% end %>
+
+<% if m != day.date.month
+   m = day.date.month %>
+</br><br><%= Date::MONTHNAMES[m] %>
+<% end %>
+
+<%= link_to(day.date.day, day) %>
+<% end %>
+</br>

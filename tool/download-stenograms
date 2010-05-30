@@ -1,0 +1,46 @@
+#!/opt/local/bin/ruby1.9
+
+require 'httparty'
+require 'fileutils'
+
+resp = HTTParty.get("http://saeima.lv/Likumdosana/likumdosana_stenogrammas.html")
+
+#puts resp.body
+
+stenogram_links = resp.scan(/href=\"\.\.\/steno[^\"]*\"/)
+stenogram_links.map! { |l|
+#    puts l
+    l["href=\"../"] = ""
+    l["\""] = ""
+    "http://saeima.lv/#{l}"
+}
+
+
+#puts stenogram_links.join("\n")
+#puts stenogram_links.size
+
+FileUtils.mkdir("stenograms") if !File.directory?("stenograms")
+
+stenogram_links.each { |l|
+#    fn = l[/st[^\/]*\.htm/]
+    fn = l[/Saeima9\/(\d\d\d\d\d\d[^\/]*)\/.*\.htm/, 1]
+    if !fn
+        puts "skip #{l}"
+        next
+    end
+    puts l
+    fn += ".htm"
+
+#    resp = HTTParty.get(l)
+#    puts "got #{fn}, size #{resp.body.size}"
+
+    x = File.open("stenograms/#{fn}")
+    data = x.read
+    x.close
+    x = File.open("stenograms/#{fn}", "w")
+    x.write(l + "\n")
+    x.write(data)
+#    x.write(resp.body)
+    x.close
+}
+

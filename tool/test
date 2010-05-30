@@ -1,0 +1,9 @@
+#!/opt/local/bin/ruby1.9
+
+
+x {
+    y { |
+        puts "aaa"
+    }
+}
+

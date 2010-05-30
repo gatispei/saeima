@@ -1,0 +1,27 @@
+#!/opt/local/bin/ruby1.9
+
+require "cairo"
+
+
+def scale_png
+
+    src = Cairo::ImageSurface.from_png("attendance2.png")
+
+    xscale = 3
+    yscale = 10
+
+
+    dst = Cairo::ImageSurface.new(src.width * xscale, src.height * yscale)
+    cr = Cairo::Context.new(dst)
+
+    cr.scale(xscale, yscale)
+    cr.set_source(src)
+    cr.source.set_filter(Cairo::FILTER_NEAREST)
+    cr.paint
+
+    cr.target.write_to_png("scaled.png")
+
+end
+
+scale_png
+

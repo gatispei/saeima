@@ -1,0 +1,8 @@
+.DS_Store
+*~
+rails/log
+rails/db/*.sqlite3
+tool/*.db
+tool/*.png
+tool/votes
+tool/stenograms

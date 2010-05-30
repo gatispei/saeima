@@ -1,0 +1,95 @@
+#!/opt/local/bin/ruby1.9
+
+require "cairo"
+require 'active_record'
+
+DB = "2.db"
+ActiveRecord::Base.establish_connection(:adapter => "sqlite3",
+                                        :database => DB)
+
+class Poll < ActiveRecord::Base
+    has_many :votes
+    has_many :members, :through => :votes
+end
+class Member < ActiveRecord::Base
+    has_many :votes
+    has_many :polls, :through => :votes
+end
+class Vote < ActiveRecord::Base
+    belongs_to :poll
+    belongs_to :member
+end
+class Day < ActiveRecord::Base
+end
+
+def create_attendance_png
+
+    width = Day.count
+    height = Member.count_by_sql("select max(id) from members") + 1
+
+    puts "surface size #{width}*#{height}"
+
+    surface = Cairo::ImageSurface.new(width, height)
+    cr = Cairo::Context.new(surface)
+    cr.set_source_color(:white)
+    cr.paint
+    cr.set_source_color(:black)
+
+    Member.find(:all).each { |m|
+        y = m.id
+        puts y
+#        member_days = m.polls
+        member_days = Poll.find_by_sql("SELECT polls.* FROM polls,votes WHERE ((votes.member_id = #{m.id}) and polls.id = votes.poll_id);");
+        puts "x"
+        member_days = member_days.map { |p| p.date.to_date }
+        puts "y"
+        member_days.sort!.uniq!
+
+        res = []
+        color = :white
+        Day.find(:all).each { |d|
+            if member_days.include?(d.date)
+                color = :green
+            else
+                if color != :white
+                    color = :red
+                end
+            end
+            res.push(color)
+        }
+
+        pc = false
+        res.reverse!.map! { |color|
+            if pc
+                color
+            else
+                if color == :red
+                    :white
+                else
+                    pc = true
+                    color
+                end
+            end
+        }
+        res.reverse!
+
+        x = 0
+        res.each { |color|
+            cr.set_source_color(color)
+            cr.rectangle(x, y, 1, 1)
+            cr.fill
+            x += 1
+        }
+
+        m.days = res.count(:red)
+        m.save
+    }
+
+#    cr.rectangle(4, 4, 1, 1)
+
+    cr.target.write_to_png("attendance2.png")
+end
+
+
+create_attendance_png
+

@@ -1,0 +1,24 @@
+
+
+<h1>Deputāti</h1>
+<table>
+  <tr>
+    <th><%= link_to("Deputats", :sort => "surname,#{@sort_order[0]}") %></th>
+    <th><%= link_to("Partija", :sort => "party,#{@sort_order[0]}") %></th>
+    <th><%= link_to("Kavetas sedes", :sort => "days,#{@sort_order[0]}") %></th>
+    <th><%= link_to("Kavetas sedes", :sort => "days,#{@sort_order[0]}") %></th>
+    <th><%= link_to("Veiktie balsojumi apmekletajas sedes", :sort => "performed_votes_percent,#{@sort_order[0]}") %></th>
+  </tr>
+
+<% @members.each do |member| %>
+  <tr>
+    <td><%= link_to("#{member.surname} #{member.name}", member) %></td>
+    <td><%= member.party %></td>
+    <td><%= "#{member.days * 100 / @days_count}% (#{member.days})" %></td>
+    <td><img src="img_trans.gif" width="500" height="10" style="background:url(att.png) 0px -<%= member.id * 10 %>px; background-repeat:no-repeat;"/></td>
+    <td><%= "#{member.performed_votes_percent}% (#{member.performed_votes})" %></td>
+  </tr>
+<% end %>
+</table>
+
+
